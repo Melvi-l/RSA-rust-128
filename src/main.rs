@@ -33,10 +33,15 @@ fn test_euclid() {
 }
 
 fn mod_mult_inv(a: u128, modulus: u128) -> Result<u128, Error> {
-    let (pgcd, f_a, _) = euclid(a, modulus);
+    let (pgcd, mut f_a, _) = euclid(a, modulus);
     println!("a: {}, modulus {}, pgcd {}", a, modulus, pgcd);
     match pgcd == 1 {
-        true => Ok(f_a.abs() as u128 % modulus),
+        true => {
+            while f_a < 0 {
+                f_a += modulus as i128;
+            }
+            Ok(f_a as u128 % modulus)
+        }
         false => Err(Error::F4DoesntFit),
     }
 }
@@ -44,10 +49,12 @@ fn mod_mult_inv(a: u128, modulus: u128) -> Result<u128, Error> {
 #[test]
 fn test_mod_mult_inv() {
     let inv = mod_mult_inv(368, 117).unwrap();
-    assert_eq!(inv, 55);
+    assert_eq!(inv, 62);
+    assert_eq!(mod_mult_inv(111059998755241, 115788865422351189).unwrap(), 45094773746044996);
+
 }
 
-fn create_key(p: u128, q: u128) -> Result<RSAKey, Error> {
+fn generate_key(p: u128, q: u128) -> Result<RSAKey, Error> {
     let n = p * q;
     let phi_n = (p - 1) * (q - 1);
     let e = F_4;
@@ -62,8 +69,8 @@ fn create_key(p: u128, q: u128) -> Result<RSAKey, Error> {
 }
 
 #[test]
-fn test_create_key() {
-    let key = create_key(104729, 130043).unwrap();
+fn test_generate_key() {
+    let key = generate_key(104729, 130043).unwrap();
     assert_eq!(key.public, (13619273347, F_4));
     assert_eq!(key.private, (13619273347, 4992975569));
 }
@@ -118,16 +125,18 @@ fn test_decrypt() {
 
 #[test]
 fn integration() {
-    let p = 1_000_000_007;
-    let q = 1_000_000_009;
+    let p = 1000000007;
+    let q = 1000000009;
     let n: u128 = p * q;
-    assert_eq!(n, 1_000_000_016_000_000_063);
-    let key = create_key(p, q).unwrap();
-    assert_eq!(key.public.1, F_4);
+    let phi_n: u128 = (p-1)*(q-1);
+    assert_eq!(n, 1000000016000000063);
+    let key = generate_key(p, q).unwrap();
+    assert_eq!(key.public.1, 65537);
     assert_eq!(key.private.1, 648946405777194593);
-    let message: u128 = 310_400_273_487; // HELLO
+    assert_eq!( (key.public.1 * key.private.1) % phi_n , 1);
+    let message: u128 = 310400273487; // HELLO
     let cipher = encrypt(message, key.public);
-    assert_eq!(cipher, 48_060_701_255_754_478);
+    assert_eq!(cipher, 48060701255754478);
     let decipher = decrypt(cipher, key.private);
     assert_eq!(decipher, message);
 }
