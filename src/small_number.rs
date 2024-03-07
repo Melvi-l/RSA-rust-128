@@ -144,6 +144,7 @@ fn integration() {
     let decipher = decrypt(cipher, key.private);
     assert_eq!(decipher, message);
 }
+
 fn pow(mut base: i128, mut exp: i128) -> i128 {
     let mut result = 1;
     while exp > 0 {
